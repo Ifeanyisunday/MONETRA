@@ -8,15 +8,19 @@ export class WalletController {
     constructor(private walletService: WalletService) {}
 
     @Get("balance")
-    balance(@Req() req) {
-
+    async balance(@Req() req) {
         return this.walletService.getBalance(req.user.id);
-
     }
 
     @Post("deposit")
-    deposit(@Req() req, @Body() body: { amount: number }) {
+    async deposit(@Req() req, @Body() body: { amount: number }) {
 
         return this.walletService.deposit(req.user.accountNumber, body.amount); 
     }   
+
+    @Get("transactions")
+    async getTransactions(@Req() req) {
+        const wallet = await this.walletService.findByUserId(req.user.id);
+        return this.walletService.transactions(wallet.id);
+    }
 }

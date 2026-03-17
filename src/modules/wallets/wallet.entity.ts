@@ -14,5 +14,5 @@ export class Wallet {
 
  @Column({ default: 0 })
  balance: number;
-
+ 
 }

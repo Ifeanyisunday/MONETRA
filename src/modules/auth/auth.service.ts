@@ -1,6 +1,7 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable, UnauthorizedException } from "@nestjs/common";
 import { UsersService } from "../users/users.service";
-import { CreateUserDto } from "../dtos/create-user.dto";
+import { CreateUserDto } from "../dtos/user-dto/create-user.dto";
+import { UserLoginDto } from "../dtos/user-dto/user-login.dto";
 import * as bcrypt from "bcrypt";
 
 @Injectable()
@@ -23,17 +24,13 @@ export class AuthService {
     }
 
     
-    async validateUser(email: string, password: string) {
+    async login(userLoginDto: UserLoginDto) {
 
-        const user = await this.usersService.findByEmail(email);
+        const user = await this.usersService.findByEmail(userLoginDto.email);
 
-        if (!user) return null;
-
-        const valid = await bcrypt.compare(password, user.password);
-
-        if (!valid) return null;
-
-        return user;
+        if(!user || user.password !== userLoginDto.password) throw new UnauthorizedException()
+        
+        return {message:"Welcome back!", userId:user.username}
 
     }
 

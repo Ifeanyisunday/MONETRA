@@ -1,4 +1,4 @@
-import { WebSocketGateway, WebSocketServer, SubscribeMessage } from '@nestjs/websockets';
+import { WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { Server } from 'socket.io';
 
 @WebSocketGateway({ cors: true})
@@ -9,7 +9,7 @@ export class NotificationGateway {
 
     sendNotification(userId: string, message: string) {
 
-    this.server.emit(`user-${userId}`, { message });
+        this.server.emit(`user-${userId}`, { message });
 
     }
 
