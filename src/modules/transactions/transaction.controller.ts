@@ -1,4 +1,4 @@
-import { Get, Controller, Param } from "@nestjs/common";
+import { Get, Controller, Param, HttpCode } from "@nestjs/common";
 import { TransactionService } from "./transaction.service";
 
 
@@ -7,6 +7,7 @@ export class TransactionController {
     constructor(private transactionService: TransactionService) {}
 
     @Get(":walletId/history")
+    @HttpCode(201)
     async history(@Param("walletId") walletId: string) {
         return this.transactionService.history(walletId);
     }

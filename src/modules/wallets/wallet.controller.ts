@@ -1,5 +1,6 @@
-import { Controller, Get, Req, Post, Body } from "@nestjs/common";
+import { Controller, Get, Req, Post, Body, UseGuards, HttpCode } from "@nestjs/common";
 import { WalletService } from "./wallet.service";
+import { JwtAuthGuard } from "../../common/authguards/jwt-auth-guard"
 
 
 @Controller("wallet")
@@ -7,20 +8,12 @@ export class WalletController {
 
     constructor(private walletService: WalletService) {}
 
-    @Get("balance")
-    async balance(@Req() req) {
-        return this.walletService.getBalance(req.user.id);
-    }
-
+    @UseGuards(JwtAuthGuard)
     @Post("deposit")
-    async deposit(@Req() req, @Body() body: { amount: number }) {
+    @HttpCode(201)
+    async deposit(@Req() req, @Body() body) {
 
-        return this.walletService.deposit(req.user.accountNumber, body.amount); 
+        return this.walletService.deposit(req.user.id, body.amount); 
     }   
 
-    @Get("transactions")
-    async getTransactions(@Req() req) {
-        const wallet = await this.walletService.findByUserId(req.user.id);
-        return this.walletService.transactions(wallet.id);
-    }
 }

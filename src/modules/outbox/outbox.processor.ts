@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common"
+import { Injectable, Inject } from "@nestjs/common"
 import { Cron } from "@nestjs/schedule"
 import { OutboxService } from "./outbox.service"
 import { QueueService } from "../queue/queue.service"
@@ -8,7 +8,7 @@ export class OutboxProcessor{
 
  constructor(
   private readonly outboxService:OutboxService,
-  private queue:QueueService
+   @Inject("QueueService") private queue: any
  ){}
 
  @Cron("*/5 * * * * *")

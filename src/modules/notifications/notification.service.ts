@@ -13,7 +13,5 @@ export class NotificationService {
         //send via Websocket
         this.notificationGateway.sendNotification(userId, message);
 
-        //Record event in outbox (for async processing)
-        await this.outbox.createEvent("USER_NOTIFICATON", { userId, message})
     }
 }

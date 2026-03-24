@@ -11,6 +11,7 @@ import { WalletService } from "../wallets/wallet.service";
 export class UsersService {
 
  constructor(
+  
   @InjectRepository(User)
   private usersRepo: Repository<User>,
   private dataSource: DataSource,
@@ -18,71 +19,51 @@ export class UsersService {
 
  ) {}
 
+
 async create(createUserDto: CreateUserDto) {
+    const { username, email, password, phoneNumber } = createUserDto;
 
-  const { username, email, password, phoneNumber } = createUserDto;
+    const queryRunner = this.dataSource.createQueryRunner();
+    await queryRunner.connect();
+    await queryRunner.startTransaction();
 
-  const queryRunner = this.dataSource.createQueryRunner();
+    try {
+        const existingUser = await queryRunner.manager.findOne(User, {
+            where: [{ email }, { phoneNumber }]
+        });
+        
+        if (existingUser) throw new ConflictException("User already exists");
 
-  await queryRunner.connect();
-  await queryRunner.startTransaction();
+        const hashedPassword = await bcrypt.hash(password, 10);
 
-  try {
+        const user = queryRunner.manager.create(User, {
+            username,
+            email,
+            password: hashedPassword,
+            phoneNumber
+        });
 
-    // 1️⃣ Check if user already exists
-    const existingUser = await queryRunner.manager.findOne(User, {
-      where: [
-        { email },
-        { phoneNumber }
-      ]
-    });
+        const savedUser = await queryRunner.manager.save(user);
+        const savedWallet = await this.walletService.createWallet(savedUser.id);
 
-    if (existingUser) {
-      throw new ConflictException(
-        "User with this email or phone number already exists"
-      );
+        await queryRunner.commitTransaction();
+
+        return {
+            ...savedUser,
+            password: undefined,
+            wallet: {
+                accountNumber: savedWallet.accountNumber,
+                balance: savedWallet.balance
+            }
+        };
+
+    } catch (err) {
+        await queryRunner.rollbackTransaction();
+        throw new ConflictException(err.message || "User creation failed");
+    } finally {
+        await queryRunner.release();
     }
-
-    // 2️⃣ Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // 3️⃣ Create user
-    const user = queryRunner.manager.create(User, {
-      username,
-      email,
-      password: hashedPassword,
-      phoneNumber
-    });
-
-    const savedUser = await queryRunner.manager.save(user);
-
-    const savedWallet = await this.walletService.createWallet(savedUser.id);
-
-    const accountNumber = savedWallet.accountNumber
-
-    const { password: _, ...userData } = savedUser;
-
-    return {
-      ...userData,
-      accountNumber
-    };
-
-  } catch (err) {
-
-    await queryRunner.rollbackTransaction();
-
-    throw new ConflictException(
-      err.message || "User creation failed"
-    );
-
-  } finally {
-
-    await queryRunner.release();
-
-  }
-
 }
-
   
   
   async findByEmail(email: string) {

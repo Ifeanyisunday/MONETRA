@@ -18,10 +18,7 @@ export class User {
  @Column({ unique: true })
  phoneNumber: string;
  
- @Column()
+ @Column({ unique: true })
  password: string;
-
-//  @CreateDateColumn()
-//  createdAt: Date;
 
 }

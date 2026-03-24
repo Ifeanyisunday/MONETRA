@@ -17,9 +17,12 @@ import { ConfigModule, ConfigService } from "@nestjs/config";
         database: config.get<string>("database.name"),
         autoLoadEntities: true,
         synchronize: true,
-        dropSchema: true, // ✅ THIS IS CRITICAL
+        dropSchema: true,
+        // extra: {
+        //   max: 1,
+        // },
       }),
     })
   ],
 })
-export class DatabaseModule {}
+export class TestDatabaseModule {}

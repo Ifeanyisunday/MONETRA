@@ -15,22 +15,3 @@ export class FraudService {
   }
 
 }
-
-
-
-// import { Injectable } from "@nestjs/common"
-
-// @Injectable()
-// export class FraudService{
-
-//  async checkTransfer(amount:number){
-
-//   if(amount > 10000){
-//    return {flag:true}
-//   }
-
-//   return {flag:false}
-
-//  }
-
-// }

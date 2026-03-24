@@ -12,32 +12,19 @@ export class LedgerService {
   ) {}
 
   // Create a ledger entry
-  async createEntry(walletId: string, amount: number, type: "debit" | "credit", reference: string) {
-    const entry = this.ledgerRepo.create({
+  createEntry(walletId: string, amount: number, type: "debit" | "credit", reference: string) {
+    return this.ledgerRepo.create({
       walletId,
       amount,
       type,
+      reference
     })
 
-    return this.ledgerRepo.save(entry)
   }
 
   // Calculate current balance
   async getBalance(walletId: string) {
-    // const credits = await this.ledgerRepo
-    //   .createQueryBuilder("ledger")
-    //   .select("SUM(ledger.amount)", "total")
-    //   .where("ledger.walletId = :walletId AND ledger.type = :type", { walletId, type: "credit" })
-    //   .getRawOne()
-
-    // const debits = await this.ledgerRepo
-    //   .createQueryBuilder("ledger")
-    //   .select("SUM(ledger.amount)", "total")
-    //   .where("ledger.walletId = :walletId AND ledger.type = :type", { walletId, type: "debit" })
-    //   .getRawOne()
-
-    // return (parseFloat(credits.total || 0) - parseFloat(debits.total || 0))
-
+    
     const result = await this.ledgerRepo
       .createQueryBuilder("ledger")
       .select(`
