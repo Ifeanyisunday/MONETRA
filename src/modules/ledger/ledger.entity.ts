@@ -18,7 +18,7 @@ export class LedgerEntry {
   @CreateDateColumn()
   createdAt: Date
 
-  @Column()
+  @Column({ unique: true })
   reference: string
 
 }

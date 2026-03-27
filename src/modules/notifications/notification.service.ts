@@ -1,17 +1,21 @@
 import { Injectable } from '@nestjs/common';
-import { NotificationGateway } from './notification.gateway';
 import { OutboxService } from '../outbox/outbox.service';
+import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from 'bull';
+
 
 @Injectable()
 export class NotificationService {
     constructor(
-        private notificationGateway: NotificationGateway,
+        @InjectQueue('notifications')
+        private readonly notificationQueue: Queue,
         private outbox: OutboxService
     ) {}
 
     async notifyUser(userId: string, message: string) {
-        //send via Websocket
-        this.notificationGateway.sendNotification(userId, message);
-
+        await this.notificationQueue.add('send-user-notification', {
+            userId,
+            message,
+        });
     }
 }

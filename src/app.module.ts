@@ -12,11 +12,22 @@ import { LedgerModule } from "./modules/ledger/ledger.module";
 import { IdempotencyModule } from "./modules/idempotency/idempotency.module";
 import { OutboxModule } from "./modules/outbox/outbox.module";
 import { QueueModule } from "./modules/queue/queue.module";
+import { BullModule } from "@nestjs/bull";
 
 @Module({
   imports: [
     AppConfigModule,
     DatabaseModule,
+    BullModule.forRoot({
+      redis: {
+        host: process.env.REDIS_HOST || 'localhost',
+        port: Number(process.env.REDIS_PORT) || 6379,
+      },
+    }),
+    BullModule.registerQueue({
+      name: 'notifications',
+    }),
+    NotificationModule,
     UsersModule,
     AuthModule,
     WalletModule,
@@ -27,7 +38,6 @@ import { QueueModule } from "./modules/queue/queue.module";
     IdempotencyModule,
     OutboxModule,
     QueueModule,
-    NotificationModule,
   ],
 })
 export class AppModule {}

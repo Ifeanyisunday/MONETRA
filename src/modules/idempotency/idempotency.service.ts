@@ -11,16 +11,28 @@ export class IdempotencyService {
     private idempotencyRepo: Repository<Idempotency>
   ) {}
 
-  async find(key: string) {
-    return this.idempotencyRepo.findOne({ where: { key } });
-  }
+  async createOrGet(key: string) {
+    try {
+      const record = this.idempotencyRepo.create({
+        key,
+        status: "processing",
+      });
 
-  async save(key: string, response: any) {
-    const record = this.idempotencyRepo.create({
-      key,
-      response: JSON.stringify(response)
-    });
-    return this.idempotencyRepo.save(record);
+      return await this.idempotencyRepo.save(record);
+    } catch (error) {
+      // Key already exists → fetch it
+      return this.idempotencyRepo.findOne({ where: { key } });
+    }
+  }
+  
+  async complete(key: string, response: any) {
+    await this.idempotencyRepo.update(
+      { key },
+      {
+        response: JSON.stringify(response),
+        status: "completed",
+      }
+    );
   }
 
 }

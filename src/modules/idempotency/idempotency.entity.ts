@@ -12,6 +12,13 @@ export class Idempotency {
   @Column()
   response: string; // stored response
 
+  @Column({
+    type: "enum",
+    enum: ["processing", "completed"],
+    default: "processing",
+  })
+  status: "processing" | "completed";
+
   @CreateDateColumn()
   createdAt: Date;
 

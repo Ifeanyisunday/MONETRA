@@ -29,6 +29,9 @@ export class Transaction {
     })
     status: 'pending' | 'completed' | 'failed';
 
+    @Column()
+    reference: string
+
 
     @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
     createdAt: Date;
