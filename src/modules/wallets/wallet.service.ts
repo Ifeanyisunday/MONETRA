@@ -17,6 +17,7 @@ import { Logger } from "@nestjs/common";
 
 @Injectable()
 export class WalletService {
+  private readonly logger = new Logger(WalletService.name)
 
    constructor(
       @InjectRepository(Wallet)
@@ -25,7 +26,6 @@ export class WalletService {
       private readonly dataSource: DataSource,
       private readonly ledgerService: LedgerService,
       private transactionsService: TransactionService,
-      private readonly logger = new Logger(WalletService.name)
    ) {}
 
 
@@ -83,122 +83,207 @@ export class WalletService {
 
 
 // async deposit(userId: string, amount: number): Promise<Wallet> {
+//   this.logger.log(`Deposit started: user=${userId}, amount=${amount}`);
+
 //   if (amount <= 0) {
+//     this.logger.warn(`Invalid deposit amount: ${amount}`);
 //     throw new ConflictException("Amount must be greater than zero");
 //   }
 
-//   return await this.dataSource.transaction(async (manager) => {
-//     // Lock wallet for update
-//     const wallet = await manager.findOne(Wallet, {
-//       where: { userId },
-//       lock: { mode: "pessimistic_write" },
+//   try {
+//     return await this.dataSource.transaction(async (manager) => {
+//       const wallet = await manager.findOne(Wallet, {
+//         where: { userId },
+//         lock: { mode: "pessimistic_write" },
+//       });
+
+//       if (!wallet) {
+//         this.logger.warn(`Wallet not found for user: ${userId}`);
+//         throw new NotFoundException("Wallet not found");
+//       }
+
+//       const reference = uuidv4();
+
+//       wallet.balance += amount;
+
+//       this.logger.log(`New balance: ${wallet.balance}`);
+
+//       const entry = manager.create(LedgerEntry, {
+//         walletId: wallet.id,
+//         amount,
+//         type: "credit",
+//         reference,
+//       });
+
+//       const transaction = manager.create(Transaction, {
+//         walletId: wallet.id,
+//         amount,
+//         type: "credit",
+//         status: "completed",
+//         reference
+//       });
+
+//       const outboxEvent = manager.create(Outbox, {
+//         eventType: "USER_NOTIFICATION",
+//         payload: {
+//           userId: wallet.userId,
+//           message: `Your account has been credited with $${amount}. New balance: $${wallet.balance}`,
+//         },
+//       });
+
+//       await manager.save([entry, wallet, transaction, outboxEvent]);
+
+//       this.logger.log('Deposit saved successfully');
+
+//       await this.notificationService.notifyUser(
+//         wallet.userId,
+//         `Your account has been credited with $${amount}. New balance: $${wallet.balance}`
+//       );
+
+//       this.logger.log('Deposit notification queued');
+
+//       return { message: 'Deposit successful', wallet };
 //     });
-
-//     if (!wallet) throw new NotFoundException("Wallet not found");
-
-//     const reference = uuidv4();
-
-//     // Ledger entry
-//     const entry = manager.create(LedgerEntry, {
-//       walletId: wallet.id,
-//       amount,
-//       type: "credit",
-//       reference,
-//     });
-
-//     wallet.balance += amount;
-
-//     // Transaction record
-//     const transaction = manager.create(Transaction, {
-//       walletId: wallet.id,
-//       amount,
-//       type: "credit",
-//       status: "completed",
-//     });
-
-//     // Outbox event (JSON payload handled via save)
-//     const outboxEvent = manager.create(Outbox, {
-//       eventType: "USER_NOTIFICATION",
-//       payload: {
-//         userId: wallet.userId,
-//         message: `Your account has been credited with $${amount}. New balance: $${wallet.balance}`,
-//       },
-//     });
-
-//     // Save all in one go
-//     await manager.save([entry, wallet, transaction, outboxEvent]);
-
-//     await this.notificationService.notifyUser(wallet.userId, `Your account has been credited with $${amount}. New balance: $${wallet.balance}`);
-
-//     return wallet;
-//   });
+//   } catch (error) {
+//     this.logger.error(`Deposit failed for user: ${userId}`, error.stack);
+//     throw error;
+//   }
 // }
 
-async deposit(userId: string, amount: number): Promise<Wallet> {
-  this.logger.log(`Deposit started: user=${userId}, amount=${amount}`);
 
-  if (amount <= 0) {
-    this.logger.warn(`Invalid deposit amount: ${amount}`);
-    throw new ConflictException("Amount must be greater than zero");
-  }
+// async deposit(
+//   userId: string,
+//   amount: number,
+//   idempotencyKey?: string
+// ): Promise<{ message: string; wallet: Wallet }> {
+//   this.logger.log(`Deposit started: user=${userId}, amount=${amount}`);
 
-  try {
-    return await this.dataSource.transaction(async (manager) => {
-      const wallet = await manager.findOne(Wallet, {
-        where: { userId },
-        lock: { mode: "pessimistic_write" },
-      });
+//   if (amount <= 0) {
+//     this.logger.warn(`Invalid deposit amount: ${amount}`);
+//     throw new ConflictException("Amount must be greater than zero");
+//   }
 
-      if (!wallet) {
-        this.logger.warn(`Wallet not found for user: ${userId}`);
-        throw new NotFoundException("Wallet not found");
-      }
+//   try {
+//     return await this.dataSource.transaction(async (manager) => {
+//       const wallet = await manager.findOne(Wallet, {
+//         where: { userId },
+//         lock: { mode: "pessimistic_write" },
+//       });
 
-      const reference = uuidv4();
+//       if (!wallet) {
+//         this.logger.warn(`Wallet not found for user: ${userId}`);
+//         throw new ConflictException("Wallet not found");
+//       }
 
-      wallet.balance += amount;
+//       // Use idempotency key to avoid duplicates
+//       const reference = idempotencyKey || uuidv4();
 
-      this.logger.log(`New balance: ${wallet.balance}`);
+//       // Check if this reference already exists (idempotency)
+//       const existingEntry = await manager.findOne(LedgerEntry, {
+//         where: { reference },
+//       });
+//       if (existingEntry) {
+//         this.logger.log(`Duplicate deposit detected, returning existing wallet`);
+//         return { message: "Deposit already processed", wallet };
+//       }
 
-      const entry = manager.create(LedgerEntry, {
-        walletId: wallet.id,
-        amount,
-        type: "credit",
-        reference,
-      });
+//       wallet.balance += amount;
 
-      const transaction = manager.create(Transaction, {
-        walletId: wallet.id,
-        amount,
-        type: "credit",
-        status: "completed",
-      });
+//       const entry = manager.create(LedgerEntry, {
+//         walletId: wallet.id,
+//         amount,
+//         type: "credit",
+//         reference,
+//       });
 
-      const outboxEvent = manager.create(Outbox, {
-        eventType: "USER_NOTIFICATION",
-        payload: {
-          userId: wallet.userId,
-          message: `Your account has been credited with $${amount}. New balance: $${wallet.balance}`,
-        },
-      });
+//       const transaction = manager.create(Transaction, {
+//         walletId: wallet.id,
+//         amount,
+//         type: "credit",
+//         status: "completed",
+//         reference,
+//       });
 
-      await manager.save([entry, wallet, transaction, outboxEvent]);
+//       const outboxEvent = manager.create(Outbox, {
+//         eventType: "USER_NOTIFICATION",
+//         payload: JSON.stringify({
+//           userId: wallet.userId,
+//           message: `Your account has been credited with $${amount}. New balance: $${wallet.balance}`,
+//         }),
+//       });
 
-      this.logger.log('Deposit saved successfully');
+//       await manager.save([wallet, entry, transaction, outboxEvent]);
 
-      await this.notificationService.notifyUser(
-        wallet.userId,
-        `Your account has been credited with $${amount}. New balance: $${wallet.balance}`
-      );
+//       // Queue notification outside transaction
+//       await this.notificationService.notifyUser(
+//         wallet.userId,
+//         `Your account has been credited with $${amount}. New balance: $${wallet.balance}`
+//       );
 
-      this.logger.log('Deposit notification queued');
+//       return { message: "Deposit successful", wallet };
+//     });
+//   } catch (error) {
+//     this.logger.error(`Deposit failed for user: ${userId}`, error.stack);
+//     throw error;
+//   }
+// }
 
-      return wallet;
+async deposit(userId: string, amount: number, idempotencyKey?: string) {
+  if (amount <= 0) throw new ConflictException("Amount must be greater than zero");
+
+  let result;
+  result = await this.dataSource.transaction(async (manager) => {
+    const wallet = await manager.findOne(Wallet, {
+      where: { userId },
+      lock: { mode: "pessimistic_write" },
     });
-  } catch (error) {
-    this.logger.error(`Deposit failed for user: ${userId}`, error.stack);
-    throw error;
-  }
+    if (!wallet) throw new ConflictException("Wallet not found");
+
+    const reference = idempotencyKey || uuidv4();
+
+    // Idempotency check
+    const existingEntry = await manager.findOne(LedgerEntry, { where: { reference } });
+    if (existingEntry) return { message: "Deposit already processed", wallet };
+
+    // Update balance
+    wallet.balance += amount;
+
+    const entry = manager.create(LedgerEntry, {
+      walletId: wallet.id,
+      amount,
+      type: "credit",
+      reference,
+    });
+
+    const transaction = manager.create(Transaction, {
+      walletId: wallet.id,
+      amount,
+      type: "credit",
+      status: "completed",
+      reference,
+    });
+
+    const outboxEvent = manager.create(Outbox, {
+      eventType: "USER_NOTIFICATION",
+      payload: JSON.stringify({
+        userId: wallet.userId,
+        message: `Your account has been credited with $${amount}. New balance: $${wallet.balance}`,
+      }),
+    });
+
+    await manager.save([wallet, entry, transaction, outboxEvent]);
+
+    return { message: "Deposit successful", wallet };
+  });
+  
+
+  // ✅ Notifications outside transaction
+  await this.notificationService.notifyUser(
+    result.wallet.userId,
+    `Your account has been credited with $${amount}. New balance: $${result.wallet.balance}`
+  );
+
+  return result;
 }
 
 

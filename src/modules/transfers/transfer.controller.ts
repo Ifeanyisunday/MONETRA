@@ -13,9 +13,9 @@ export class TransferController {
 
 
 @UseGuards(JwtAuthGuard)
+@UseInterceptors(IdempotencyInterceptor)
 @Post("transfer")
 @HttpCode(201) 
-@UseInterceptors(IdempotencyInterceptor)
 transfer(@Req() req, @Body() body: CreateTransferDto): Promise<any> {
   
   const userId = req.user.id;

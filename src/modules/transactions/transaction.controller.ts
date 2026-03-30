@@ -7,7 +7,7 @@ export class TransactionController {
     constructor(private transactionService: TransactionService) {}
 
     @Get(":walletId/history")
-    @HttpCode(201)
+    @HttpCode(200)
     async history(@Param("walletId") walletId: string) {
         return this.transactionService.history(walletId);
     }

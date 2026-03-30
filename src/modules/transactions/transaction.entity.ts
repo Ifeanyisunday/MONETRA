@@ -1,4 +1,5 @@
-import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn } from "typeorm";
+import { CreateDateColumn } from "typeorm";
+import { Column, Entity, PrimaryGeneratedColumn, ManyToOne, JoinColumn, } from "typeorm";
 import { Wallet } from "../wallets/wallet.entity";
 @Entity()
 export class Transaction {
@@ -17,14 +18,12 @@ export class Transaction {
     amount: number;
 
     @Column({
-        type: 'enum',
-        enum: ['debit', 'credit', 'deposit', 'withdrawal'],
+        type: 'text',
     })
     type: 'debit' | 'credit' | 'deposit' | 'withdrawal';
 
     @Column({
-        type: 'enum',
-        enum: ['pending', 'completed', 'failed'],
+        type: 'text',
         default: 'pending',
     })
     status: 'pending' | 'completed' | 'failed';
@@ -33,7 +32,7 @@ export class Transaction {
     reference: string
 
 
-    @Column({ type: "timestamp", default: () => "CURRENT_TIMESTAMP" })
+    @CreateDateColumn()
     createdAt: Date;
 
 }

@@ -7,7 +7,15 @@ import { OutboxModule } from "../outbox/outbox.module";
   imports: [OutboxModule],
   providers: [
     NotificationGateway,
-    NotificationService
+    {
+      provide: NotificationService,
+      useClass:
+        process.env.NODE_ENV === 'test'
+          ? class {
+              notifyUser = jest.fn();
+            }
+          : NotificationService,
+    },
   ],
   exports: [
     NotificationService

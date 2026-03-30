@@ -8,12 +8,16 @@ import { QueueModule } from "../queue/queue.module"
 
 @Module({
   imports: [TypeOrmModule.forFeature([Outbox]), QueueModule],
-  providers: [OutboxService, OutboxProcessor,
+  providers: [OutboxService, 
+    ...(process.env.NODE_ENV === 'test' ? [] : [OutboxProcessor]),
     {
       provide: "QueueService",
-      useValue: {
-        add: async () => {},
-      },
+      useValue: 
+        process.env.NODE_ENV === 'test'
+          ? { add: jest.fn() }
+          : {
+              add: async () => {},
+            },
     },
   ],
   exports: [OutboxService]

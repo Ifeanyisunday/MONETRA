@@ -3,7 +3,6 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { ConfigModule, ConfigService } from "@nestjs/config";
 
 @Module({
-    
   imports: [
     TypeOrmModule.forRootAsync({
       imports: [ConfigModule],

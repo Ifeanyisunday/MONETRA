@@ -1,5 +1,11 @@
-import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from "typeorm"
+import { Entity, 
+  PrimaryGeneratedColumn, 
+  Column, 
+  CreateDateColumn,
+  Unique } from "typeorm"
 
+
+@Unique(["walletId", "reference", "type"])
 @Entity()
 export class LedgerEntry {
 
@@ -18,7 +24,7 @@ export class LedgerEntry {
   @CreateDateColumn()
   createdAt: Date
 
-  @Column({ unique: true })
+  @Column()
   reference: string
 
 }

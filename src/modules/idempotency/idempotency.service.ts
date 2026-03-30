@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { InjectRepository } from "@nestjs/typeorm";
 import { Repository } from "typeorm";
 import { Idempotency } from "./idempotency.entity";
+import { ConflictException } from "@nestjs/common";
 
 @Injectable()
 export class IdempotencyService {
@@ -12,24 +13,31 @@ export class IdempotencyService {
   ) {}
 
   async createOrGet(key: string) {
-    try {
-      const record = this.idempotencyRepo.create({
-        key,
-        status: "processing",
-      });
+    let record = await this.idempotencyRepo.findOne({ where: { key } });
 
-      return await this.idempotencyRepo.save(record);
-    } catch (error) {
-      // Key already exists → fetch it
-      return this.idempotencyRepo.findOne({ where: { key } });
+     if (!record) {
+        record = this.idempotencyRepo.create({
+          key,
+          status: "processing",
+        });
+
+        await this.idempotencyRepo.save(record);
+
+        return { isNew: true, record };
     }
+    
+    if (record.status === "completed") {
+      return { isNew: false, record };
+    }
+
+    throw new ConflictException('Request already in progress');
   }
   
   async complete(key: string, response: any) {
     await this.idempotencyRepo.update(
       { key },
       {
-        response: JSON.stringify(response),
+        response: response,
         status: "completed",
       }
     );

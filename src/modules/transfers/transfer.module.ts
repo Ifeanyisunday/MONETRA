@@ -6,13 +6,16 @@ import { TransferController } from "./transfer.controller";
 import { LedgerModule } from "../ledger/ledger.module";
 import { NotificationModule } from "../notifications/notification.module";
 import { FraudModule } from "../fraud/fraud.module";
+import { IdempotencyModule } from "../idempotency/idempotency.module";
+import { IdempotencyInterceptor } from "../idempotency/idempotency.interceptor";
 
 
 @Module({
   imports: [TypeOrmModule.forFeature([Transaction]),
   forwardRef(() => LedgerModule),
   forwardRef(() => NotificationModule),
-  forwardRef(() => FraudModule)
+  forwardRef(() => FraudModule),
+  forwardRef(() => IdempotencyModule)
 ],
   providers: [TransferService],
   controllers: [TransferController],

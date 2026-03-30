@@ -9,8 +9,8 @@ export class Idempotency {
   @Column({ unique: true })
   key: string; // unique request key
 
-  @Column()
-  response: string; // stored response
+  @Column({ type: 'json', nullable: true })
+  response: any;
 
   @Column({
     type: "enum",

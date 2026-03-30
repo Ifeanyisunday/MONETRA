@@ -3,7 +3,12 @@ import { Cron } from "@nestjs/schedule"
 import { OutboxService } from "./outbox.service"
 import { QueueService } from "../queue/queue.service"
 import { InjectQueue } from '@nestjs/bull';
+import type { Queue } from "bull";
+import { Processor, Process } from '@nestjs/bull';
 
+
+
+@Processor('outbox')
 @Injectable()
 export class OutboxProcessor{
 
