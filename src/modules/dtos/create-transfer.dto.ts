@@ -8,10 +8,10 @@ export class CreateTransferDto {
 
     @IsString()
     @IsNotEmpty()
-    recipientAccountNumber: string;
+    recipientAccountNumber!: string;
 
     @IsNumber()
     @IsNotEmpty()
-    amount: number;
+    amount!: number;
 
 }

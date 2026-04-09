@@ -9,6 +9,7 @@ export class TransactionController {
     @Get(":walletId/history")
     @HttpCode(200)
     async history(@Param("walletId") walletId: string) {
+        console.log('Fetching transaction history for wallet:', walletId);
         return this.transactionService.history(walletId);
     }
 }

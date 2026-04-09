@@ -17,7 +17,8 @@ export class AuthService {
   async register(createUserDto: CreateUserDto) {
           return this.usersService.create(createUserDto);
   
-      }
+  }
+
 
   async validateUser(email: string, password: string) {
       const user = await this.usersService.findByEmail(email);

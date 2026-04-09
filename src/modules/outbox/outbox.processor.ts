@@ -1,54 +1,40 @@
-import { Injectable, Inject, } from "@nestjs/common"
-import { Cron } from "@nestjs/schedule"
-import { OutboxService } from "./outbox.service"
-import { QueueService } from "../queue/queue.service"
-import { InjectQueue } from '@nestjs/bull';
-import type { Queue } from "bull";
-import { Processor, Process } from '@nestjs/bull';
+import { Injectable, Logger } from '@nestjs/common';
+import { OutboxService } from './outbox.service';
+import { QueueService } from '../queue/queue.service';
 
-
-
-@Processor('outbox')
 @Injectable()
-export class OutboxProcessor{
-
-//  constructor(
-//   private readonly outboxService:OutboxService,
-//    @Inject("QueueService") private queue: any
-//  ){}
-
-//  @Cron("*/5 * * * * *")
-//  async process(){
-
-//   const events = await this.outboxService.getUnprocessed()
-
-//   for(const event of events){
-
-//    await this.queue.publish(event.eventType, event.payload)
-
-//    await this.outboxService.markProcessed(event.id)
-
-//   }
-
-//  }
+export class OutboxProcessor {
+  private readonly logger = new Logger(OutboxProcessor.name);
 
   constructor(
-    private outboxService: OutboxService,
-    @InjectQueue('notifications')
-    private notificationQueue: Queue,
+    private readonly outboxService: OutboxService,
+    private readonly queueService: QueueService,
   ) {}
 
-  @Process('process')
-  async handleOutbox() {
+  // Main function: process all unprocessed outbox events
+  async processPendingMessages() {
     const events = await this.outboxService.getUnprocessed();
 
     for (const event of events) {
-      if (event.eventType === "USER_NOTIFICATION") {
-        await this.notificationQueue.add('send', event.payload);
-      }
+      try {
+        // Publish to RabbitMQ using your QueueService
+        await this.queueService.publish(event.eventType, event.payload);
 
-      await this.outboxService.markProcessed(event.id);
+        // Mark as processed in DB
+        await this.outboxService.markProcessed(event.id);
+
+        this.logger.log(`Event ${event.id} (${event.eventType}) processed successfully.`);
+      } catch (err) {
+          if (err instanceof Error) {
+            console.log(
+              `Failed to process event ${event.id} (${event.eventType}): ${err.message}`,
+            );
+          } else {
+            console.log(
+              `Failed to process event ${event.id} (${event.eventType}): Unknown error`,
+            );
+          }
+        }
     }
   }
-
 }

@@ -6,15 +6,19 @@ import { Wallet } from "./wallet.entity";
 import { NotificationModule } from "../notifications/notification.module";
 import { LedgerModule } from "../ledger/ledger.module";
 import { TransactionModule } from "../transactions/transaction.module";
+import { IdempotencyModule } from "../idempotency/idempotency.module";
+
 
 @Module({
   imports: [TypeOrmModule.forFeature([Wallet]),
     NotificationModule,
     LedgerModule,
-    TransactionModule
+    TransactionModule,
+    IdempotencyModule
 ],
   providers: [WalletService],
   controllers: [WalletController],
-  exports: [WalletService],
+  exports: [WalletService, TypeOrmModule],
 })
+
 export class WalletModule {}

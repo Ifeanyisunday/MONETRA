@@ -20,54 +20,6 @@ export class UsersService {
  ) {}
 
 
-// async create(createUserDto: CreateUserDto) {
-//     const { username, email, password, phoneNumber } = createUserDto;
-
-//     const queryRunner = this.dataSource.createQueryRunner();
-//     await queryRunner.connect();
-//     await queryRunner.startTransaction();
-
-//     try {
-//         const existingUser = await queryRunner.manager.findOne(User, {
-//             where: [{ email }, { phoneNumber }]
-//         });
-        
-//         if (existingUser) throw new ConflictException("User already exists");
-
-//         const hashedPassword = await bcrypt.hash(password, 10);
-
-//         const user = queryRunner.manager.create(User, {
-//             username,
-//             email,
-//             password: hashedPassword,
-//             phoneNumber
-//         });
-
-//         const savedUser = await queryRunner.manager.save(user);
-//         const savedWallet = await this.walletService.createWallet(savedUser.id);
-
-//         await queryRunner.commitTransaction();
-
-//         return {
-//             ...savedUser,
-//             password: undefined,
-//             wallet: {
-//                 id: savedWallet.id, 
-//                 userId: savedUser.id,
-//                 accountNumber: savedWallet.accountNumber,
-//                 balance: savedWallet.balance
-//             }
-//         };
-
-//     } catch (err) {
-//         await queryRunner.rollbackTransaction();
-//         throw new ConflictException(err.message || "User creation failed");
-//     } finally {
-//         await queryRunner.release();
-//     }
-// }
-
-
 async create(createUserDto: CreateUserDto) {
   const { username, email, password, phoneNumber } = createUserDto;
 
@@ -93,7 +45,12 @@ async create(createUserDto: CreateUserDto) {
     const savedUser = await queryRunner.manager.save(user);
     const savedWallet = await this.walletService.createWallet(savedUser.id);
 
+    if (!savedWallet) {
+      throw new Error("Wallet creation failed");
+    }
+
     await queryRunner.commitTransaction();
+
 
     return {
       ...savedUser,
@@ -107,7 +64,11 @@ async create(createUserDto: CreateUserDto) {
     };
   } catch (err) {
     await queryRunner.rollbackTransaction();
-    throw new ConflictException(err.message || "User creation failed");
+    if (err instanceof Error) {
+      throw new ConflictException(err.message);
+    }
+
+    throw new ConflictException("User creation failed");
   } finally {
     await queryRunner.release();
   }

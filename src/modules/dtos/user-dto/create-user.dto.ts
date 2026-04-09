@@ -3,17 +3,17 @@ import { IsEmail, IsPhoneNumber, IsString, MinLength, Matches, MaxLength } from 
 export class CreateUserDto {
 
     @IsString()
-    username: string;
+    username!: string;
 
     @IsEmail({})
-    email: string;
+    email!: string;
 
-    @IsPhoneNumber()
-    phoneNumber: string;
+    @IsPhoneNumber('NG')
+    phoneNumber!: string;
 
     @IsString()
     @MinLength(6)
     @MaxLength(20)
-    password: string;
+    password!: string;
     
 }

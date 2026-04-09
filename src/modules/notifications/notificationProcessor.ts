@@ -11,16 +11,6 @@ export class NotificationProcessor {
     private notificationGateway: NotificationGateway
   ) {}
 
-//   @Process('send-user-notification')
-//   async handleNotification(job: Job) {
-//     const { userId, message } = job.data;
-
-//     // console.log("Processing notification:", job.data);
-
-//     // 🔥 send via websocket
-//     this.notificationGateway.sendNotification(userId, message);
-//   }
-
   @Process('send-notification')
   async handleNotification(job: Job<{ userId: string; message: string }>) {
     const { userId, message } = job.data;

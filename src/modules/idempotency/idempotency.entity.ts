@@ -3,11 +3,11 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from "typeor
 @Entity()
 export class Idempotency {
 
-  @PrimaryGeneratedColumn("uuid")
-  id: string;
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
   @Column({ unique: true })
-  key: string; // unique request key
+  key!: string; // unique request key
 
   @Column({ type: 'json', nullable: true })
   response: any;
@@ -17,9 +17,9 @@ export class Idempotency {
     enum: ["processing", "completed"],
     default: "processing",
   })
-  status: "processing" | "completed";
+  status!: "processing" | "completed";
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
 }

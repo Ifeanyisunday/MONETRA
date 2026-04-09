@@ -4,7 +4,6 @@ import { CreateTransferDto } from "../dtos/create-transfer.dto";
 import { JwtAuthGuard } from "../../common/authguards/jwt-auth-guard"
 import { IdempotencyInterceptor } from "../idempotency/idempotency.interceptor"; 
 import { BadRequestException } from "@nestjs/common";
-import { TransferResponse } from "../dtos/transferResponse";
 
 
 @Controller("money")
@@ -12,25 +11,25 @@ export class TransferController {
   constructor(private transferService: TransferService) {}
 
 
+@Post('transfer')
 @UseGuards(JwtAuthGuard)
-@UseInterceptors(IdempotencyInterceptor)
-@Post("transfer")
-@HttpCode(201) 
-transfer(@Req() req, @Body() body: CreateTransferDto): Promise<any> {
-  
-  const userId = req.user.id;
-  const idempotencyKey = req.headers["idempotency-key"] ||
-   req.headers["Idempotency-key"];
+@HttpCode(201)
+async transfer(@Req() req, @Body() body: CreateTransferDto) {
+  const userId = req.user.userId;
+  const idempotencyKey = req.headers['idempotency-key'];
 
   if (!idempotencyKey) {
     throw new BadRequestException("Idempotency-Key header is required");
   }
-  
-  return this.transferService.transfer(
+
+  // Call service
+  const result = await this.transferService.transfer(
     userId,
     body.recipientAccountNumber,
     body.amount,
-    idempotencyKey as string
+    idempotencyKey
   );
+
+  return result;
 }
 }

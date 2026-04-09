@@ -6,19 +6,19 @@ import { Entity,
 @Entity()
 export class User {
 
- @PrimaryGeneratedColumn("uuid")
- id: string;
+ @PrimaryGeneratedColumn('uuid')
+ id!: string;
 
  @Column()
- username: string;
+ username!: string;
 
  @Column({ unique: true })
- email: string;
+ email!: string;
  
  @Column({ unique: true })
- phoneNumber: string;
+ phoneNumber!: string;
  
  @Column({ unique: true })
- password: string;
+ password!: string;
 
 }

@@ -3,16 +3,16 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from "typeor
 @Entity()
 export class Event {
 
-  @PrimaryGeneratedColumn("uuid")
-  id: string;
+  @PrimaryGeneratedColumn('uuid')
+  id!: string;
 
   @Column()
-  type: string;
+  type!: string;
 
   @Column("json")
   payload: any;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 
 }

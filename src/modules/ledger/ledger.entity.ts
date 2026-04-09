@@ -9,22 +9,22 @@ import { Entity,
 @Entity()
 export class LedgerEntry {
 
-  @PrimaryGeneratedColumn("uuid")
-  id: string
+  @PrimaryGeneratedColumn('uuid')
+  id!: string
 
   @Column()
-  walletId: string
+  walletId!: string
 
   @Column()
-  type: "debit" | "credit"
+  type!: "debit" | "credit"
 
   @Column({ type: "decimal", precision: 18, scale: 2 })
-  amount: number
+  amount!: number
 
   @CreateDateColumn()
-  createdAt: Date
+  createdAt!: Date
 
   @Column()
-  reference: string
+  reference!: string
 
 }

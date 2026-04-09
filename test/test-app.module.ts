@@ -6,12 +6,13 @@ import { WalletModule } from '../src/modules/wallets/wallet.module';
 import { TransactionModule } from '../src/modules/transactions/transaction.module';
 import { TransferModule } from '../src/modules/transfers/transfer.module';
 import { TestDatabaseModule } from './db-test/test-db.module';
-
+import { IdempotencyModule } from '../src/modules/idempotency/idempotency.module';
 
 @Module({
   imports: [
     TestDatabaseModule,
     AppConfigModule,
+    IdempotencyModule,
     UsersModule,
     AuthModule,
     WalletModule,
@@ -19,4 +20,5 @@ import { TestDatabaseModule } from './db-test/test-db.module';
     TransferModule,
   ],
 })
+
 export class TestAppModule {}

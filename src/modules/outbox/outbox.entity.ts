@@ -3,19 +3,21 @@ import { Entity, PrimaryGeneratedColumn, Column, CreateDateColumn } from "typeor
 @Entity()
 export class Outbox {
 
-  @PrimaryGeneratedColumn("uuid")
-  id: string
+  @PrimaryGeneratedColumn('uuid')
+  id!: string
 
   @Column()
-  eventType: string
+  eventType!: string
 
   @Column("json")
   payload: any
 
   @Column({ default: false })
-  processed: boolean
+  processed!: boolean
 
   @CreateDateColumn()
-  createdAt: Date
+  createdAt!: Date
 
+  @Column({ type: 'timestamp', nullable: true })
+  processedAt?: Date; // ✅ Add this column
 }

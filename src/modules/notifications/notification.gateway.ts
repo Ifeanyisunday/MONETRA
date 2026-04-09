@@ -4,7 +4,7 @@ import { Server } from 'socket.io';
 @WebSocketGateway({ cors: true})
 export class NotificationGateway {
     @WebSocketServer()
-    server: Server;
+    server!: Server;
 
     sendNotification(userId: string, message: string) {
         this.server.emit(`user-${userId}`, { message });

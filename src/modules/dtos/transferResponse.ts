@@ -3,7 +3,7 @@ import { IsNumber, IsPositive, IsString } from 'class-validator';
 export class TransferResponse {
 
     @IsString()
-    message: string;
+    message!: string;
 
     sender: any;
 
