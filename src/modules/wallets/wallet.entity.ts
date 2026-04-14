@@ -12,6 +12,6 @@ export class Wallet {
   @Column({ unique: true })
   accountNumber!: string;
 
-  @Column({ type: "decimal", default: 0 })
-  balance!: number;
+  @Column({ type: "int", default: 0 })
+  balance!: number
 }

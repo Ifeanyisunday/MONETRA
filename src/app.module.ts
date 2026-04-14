@@ -13,6 +13,7 @@ import { IdempotencyModule } from "./modules/idempotency/idempotency.module";
 import { OutboxModule } from "./modules/outbox/outbox.module";
 import { QueueModule } from "./modules/queue/queue.module";
 import { BullModule } from "@nestjs/bull";
+import { AppController } from "./app.controller";
 
 @Module({
   imports: [
@@ -39,5 +40,7 @@ import { BullModule } from "@nestjs/bull";
     OutboxModule,
     QueueModule,
   ],
+  controllers: [AppController], // ✅ put controllers here
+  providers: [],
 })
 export class AppModule {}

@@ -9,6 +9,7 @@ import { Transaction } from "../transactions/transaction.entity"
 import { InjectRepository } from "@nestjs/typeorm";
 import { NotificationService } from "../notifications/notification.service";
 import { Logger } from '@nestjs/common';
+import { FraudService } from "../fraud/fraud.service";
 
 
 @Injectable()
@@ -19,78 +20,114 @@ export class TransferService {
     constructor(
         private readonly dataSource: DataSource,
         private readonly notificationService: NotificationService,
+        private readonly fraudService: FraudService,
     ) {}
 
 
-async transfer(
-  senderUserId: string,
-  recipientAccountNumber: string,
-  amount: number,
-  idempotencyKey: string
-) {
-  if (amount <= 0) throw new ConflictException("Amount must be greater than zero");
+  async transfer(
+    senderUserId: string,
+    recipientAccountNumber: string,
+    amount: number,
+    idempotencyKey: string
+  ) {
+    if (amount <= 0) throw new ConflictException("Amount must be greater than zero");
 
-  console.log('Service Idempotency Key:', idempotencyKey);
+    await this.fraudService.checkTransaction(amount);
 
-  return this.dataSource.transaction(async (manager) => {
-    // --- Check if transaction already exists (idempotency)
-    const existingTx = await manager.findOne(Transaction, { where: { reference: idempotencyKey } });
-    if (existingTx) {
-      // Throws 409 error
-      throw new ConflictException({
-        message: "Transfer already processed",
-        sender: { balance: Number(existingTx.senderBalanceAfter) },
-        recipient: { balance: Number(existingTx.recipientBalanceAfter) },
+    return this.dataSource.transaction(async (manager) => {
+      // --- Idempotency check
+      const existingTx = await manager.findOne(Transaction, { where: { reference: idempotencyKey } });
+      if (existingTx) {
+        throw new ConflictException({
+          message: "Transfer already processed",
+          sender: { balance: Number(existingTx.senderBalanceAfter) },
+          recipient: { balance: Number(existingTx.recipientBalanceAfter) },
+        });
+      }
+
+      // --- Fetch wallets with lock
+      const senderWallet = await manager.findOne(Wallet, {
+        where: { userId: senderUserId },
+        lock: { mode: "pessimistic_write" },
       });
-    }
+      if (!senderWallet) throw new NotFoundException("Sender wallet not found");
 
-    // --- Fetch wallets with lock
-    const sender = await manager.findOne(Wallet, { where: { userId: senderUserId }, lock: { mode: "pessimistic_write" } });
-    if (!sender) throw new NotFoundException("Sender wallet not found");
+      const recipientWallet = await manager.findOne(Wallet, {
+        where: { accountNumber: recipientAccountNumber },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!recipientWallet) throw new NotFoundException("Recipient wallet not found");
 
-    const recipient = await manager.findOne(Wallet, { where: { accountNumber: recipientAccountNumber }, lock: { mode: "pessimistic_write" } });
-    if (!recipient) throw new NotFoundException("Recipient wallet not found");
+      if (senderWallet.id === recipientWallet.id) {
+        throw new BadRequestException("Cannot transfer to the same account");
+      }
 
-    const senderBalance = Number(sender.balance);
-    const recipientBalance = Number(recipient.balance);
+      const senderBalance = Number(senderWallet.balance);
+      const recipientBalance = Number(recipientWallet.balance);
 
-    if (senderBalance < amount) throw new BadRequestException("Insufficient funds");
+      if (senderBalance < amount) throw new BadRequestException("Insufficient funds");
 
-    // --- Update balances
-    sender.balance = senderBalance - amount;
-    recipient.balance = recipientBalance + amount;
-    await manager.save([sender, recipient]);
+      // --- Update balances
+      senderWallet.balance = senderBalance - amount;
+      recipientWallet.balance = recipientBalance + amount;
+      await manager.save([senderWallet, recipientWallet]);
 
-    // --- Ledger entries
-    const senderLedger = manager.create(LedgerEntry, { walletId: sender.id, amount: -amount, type: "debit", reference: idempotencyKey });
-    const recipientLedger = manager.create(LedgerEntry, { walletId: recipient.id, amount, type: "credit", reference: idempotencyKey });
+      // --- Ledger entries
+      const senderLedger = manager.create(LedgerEntry, {
+        walletId: senderWallet.id,
+        amount: -amount,
+        type: "debit",
+        reference: idempotencyKey,
+      });
+      const recipientLedger = manager.create(LedgerEntry, {
+        walletId: recipientWallet.id,
+        amount,
+        type: "credit",
+        reference: idempotencyKey,
+      });
 
-    // --- Transaction record
-    const transaction = manager.create(Transaction, {
-      reference: idempotencyKey,
-      senderId: sender.id,
-      recipientId: recipient.id,
-      amount,
-      senderBalanceAfter: sender.balance,
-      recipientBalanceAfter: recipient.balance,
-      type: "transfer",
-      status: "success",
+      // --- Transaction record (transfer)
+      const transaction = manager.create(Transaction, {
+        reference: idempotencyKey,
+        senderId: senderWallet.id,
+        recipientId: recipientWallet.id,
+        amount,
+        currency: "NGN", // ✅ new field
+        senderBalanceAfter: senderWallet.balance,
+        recipientBalanceAfter: recipientWallet.balance,
+        type: "transfer",
+        status: "success",
+        narration: `Transfer of ₦${amount} to account ${recipientWallet.accountNumber}`, // ✅ new field
+        channel: "mobile-app", // ✅ new field
+      });
+
+      // --- Outbox event
+      const outboxEvent = manager.create(Outbox, {
+        eventType: "USER_NOTIFICATION",
+        payload: JSON.stringify({
+          userId: recipientWallet.userId,
+          message: `You received ₦${amount} from ${senderWallet.accountNumber}`,
+        }),
+      });
+
+      await manager.save([senderLedger, recipientLedger, transaction, outboxEvent]);
+
+      // --- Notify users outside transaction
+      await this.notificationService.notifyUser(
+        recipientWallet.userId,
+        `You received ₦${amount} from ${senderWallet.accountNumber}`
+      );
+      await this.notificationService.notifyUser(
+        senderWallet.userId,
+        `₦${amount} has been sent to ${recipientWallet.accountNumber}`
+      );
+
+      return {
+        message: "Transfer successful",
+        sender: { balance: Number(senderWallet.balance) },
+        recipient: { balance: Number(recipientWallet.balance) },
+      };
     });
+  }
 
-    // --- Outbox event
-    const outboxEvent = manager.create(Outbox, {
-      eventType: "USER_NOTIFICATION",
-      payload: JSON.stringify({ userId: recipient.userId, message: `You received $${amount} from ${sender.userId}` }),
-    });
-
-    await manager.save([senderLedger, recipientLedger, transaction, outboxEvent]);
-
-    // --- Notify users outside transaction
-    await this.notificationService.notifyUser(recipient.userId, `You received $${amount} from ${sender.userId}`);
-    await this.notificationService.notifyUser(sender.userId, `$${amount} has been sent to ${recipient.userId}`);
-
-    return { message: "Transfer successful", sender: { balance: Number(sender.balance) }, recipient: { balance: Number(recipient.balance) } };
-  });
-}
-  
 }

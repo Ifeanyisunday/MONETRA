@@ -3,12 +3,14 @@ import { AuthService } from "./auth.service";
 import { CreateUserDto } from "../../modules/dtos/user-dto/create-user.dto"
 import { JwtAuthGuard } from "./jwt-auth-guard";
 import { UserLoginDto } from "../../modules/dtos/user-dto/user-login.dto"
+import { UsersService } from "../../modules/users/users.service";
 
 
 
 @Controller("auth")
 export class AuthController {
-  constructor(private authService: AuthService) {}
+  constructor(private authService: AuthService,
+  ) {}
 
 
   @Post("register")

@@ -55,88 +55,85 @@ export class WalletService {
 
   // -------------------- DEPOSIT --------------------
   async deposit(userId: string, amount: number, idempotencyKey?: string) {
-  if (amount <= 0) throw new ConflictException("Amount must be greater than zero");
+    if (amount <= 0) throw new ConflictException("Amount must be greater than zero");
 
-  const reference = idempotencyKey || uuidv4();
+    const reference = idempotencyKey || uuidv4();
 
-  return this.dataSource.transaction(async (manager) => {
-    // --- Idempotency check
-    const existingTx = await manager.findOne(Transaction, { where: { reference } });
-    if (existingTx) {
+    return this.dataSource.transaction(async (manager) => {
+      // --- Idempotency check
+      const existingTx = await manager.findOne(Transaction, { where: { reference } });
+      if (existingTx) {
+        return {
+          status: 409,
+          message: "Deposit already processed",
+          wallet: { balance: existingTx.recipientBalanceAfter },
+        };
+      }
+
+      // --- Fetch wallet with lock
+      const wallet = await manager.findOne(Wallet, { 
+        where: { userId },
+        lock: { mode: "pessimistic_write" },
+      });
+      if (!wallet) throw new NotFoundException("Wallet not found");
+
+      if (amount < 100) throw new ConflictException("Minimum deposit is ₦100");
+
+      // --- Update balance
+      wallet.balance = Number(wallet.balance) + amount;
+      await manager.save(wallet);
+
+      // --- Ledger entry
+      const ledgerEntry = manager.create(LedgerEntry, {
+        walletId: wallet.id,
+        amount,
+        type: "credit",
+        reference,
+      });
+
+      // --- Transaction record (self-deposit)
+      const transaction = manager.create(Transaction, {
+        reference,
+        senderId: wallet.id,
+        recipientId: wallet.id,
+        amount,
+        currency: "NGN", // ✅ new field
+        senderBalanceAfter: wallet.balance,
+        recipientBalanceAfter: wallet.balance,
+        type: "deposit",
+        status: "success",
+        narration: `Deposit of ₦${amount}`, // ✅ new field
+        channel: "mobile-app",             // ✅ new field
+      });
+
+      // --- Outbox event for notification
+      const outboxEvent = manager.create(Outbox, {
+        eventType: "USER_NOTIFICATION",
+        payload: JSON.stringify({
+          userId: wallet.userId,
+          message: `Your account has been credited with ₦${amount}. New balance: ₦${wallet.balance}`,
+        }),
+      });
+
+      // --- Save all records
+      await manager.save([ledgerEntry, transaction, outboxEvent]);
+
+      // --- Send notifications (outside DB transaction)
+      await this.notificationService.notifyUser(
+        wallet.userId,
+        `Your account has been credited with ₦${amount}. New balance: ₦${Number(wallet.balance)}`
+      );
+
       return {
-        status: 409,
-        message: "Deposit already processed",
-        wallet: { balance: existingTx.recipientBalanceAfter },
+        message: "Deposit successful",
+        wallet: {
+          accountNumber: wallet.accountNumber,
+          balance: Number(wallet.balance),
+        },
       };
-    }
-
-    // --- Fetch wallet with lock
-    const wallet = await manager.findOne(Wallet, { 
-      where: { userId },
-      lock: { mode: "pessimistic_write" },
     });
-    if (!wallet) throw new NotFoundException("Wallet not found");
-
-    // --- Update balance
-    wallet.balance += amount;
-    await manager.save(wallet);
-
-    // --- Ledger entry
-    const ledgerEntry = manager.create(LedgerEntry, {
-      walletId: wallet.id,
-      amount,
-      type: "credit",
-      reference,
-    });
-
-    // --- Transaction record (self-deposit)
-    const transaction = manager.create(Transaction, {
-      reference,
-      sender: wallet,
-      senderId: wallet.id,         // ✅ FK matches wallet.id
-      recipient: wallet,
-      recipientId: wallet.id,      // ✅ FK matches wallet.id
-      amount,
-      senderBalanceAfter: wallet.balance,
-      recipientBalanceAfter: wallet.balance,
-      type: "deposit",
-      status: "success",
-    });
-
-    // --- Outbox event for notification
-    const outboxEvent = manager.create(Outbox, {
-      eventType: "USER_NOTIFICATION",
-      payload: JSON.stringify({
-        userId: wallet.userId,
-        message: `Your account has been credited with $${amount}. New balance: $${wallet.balance}`,
-      }),
-    });
-
-    // --- Save all records
-    await manager.save([ledgerEntry, transaction, outboxEvent]);
-
-    // --- Send notifications (outside DB transaction)
-    await this.notificationService.notifyUser(
-      wallet.userId,
-      `Your account has been credited with $${amount}. New balance: $${wallet.balance}`
-    );
-
-    return {
-      status: 201,
-      message: "Deposit successful",
-      wallet: { balance: Number(wallet.balance)},
-    };
-  });
-}
-
-  // -------------------- TRANSACTIONS HISTORY --------------------
-  async transactions(walletId: string) {
-    const wallet = await this.walletRepo.findOne({ where: { id: walletId } });
-    if (!wallet) throw new ConflictException("Wallet not found");
-
-    // Delegate to TransactionService.history (TypeScript-safe)
-    return this.transactionsService.history(walletId);
   }
+
 
   // -------------------- FIND WALLET BY USER --------------------
   async findByUserId(userId: string) {

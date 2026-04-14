@@ -46,11 +46,14 @@ describe('Fintech Flow (E2E)', () => {
       .send({ email: user1Email, password: 'pass1', username: 'user1', phoneNumber: '08012345678' });
     wallet1 = res1.body.wallet;
 
+    console.log('User 1:', res1.body);
+
 
     const login1 = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: user1Email, password: 'pass1' });
     token1 = login1.body.access_token;
+    console.log('User 1 logged in:', login1.body);
 
     const res2 = await request(app.getHttpServer())
       .post('/auth/register')
